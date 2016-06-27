@@ -1,8 +1,12 @@
-# test-rest
+# demoRestify
 
-This project was generated using [yo restify-server generator](
+Este es un proyecto de demo, para estudiar como crear un servidor REST con Restify y NodeJS
+
+Este proyecto fue generado utilizando [yo restify-server generator](
 https://github.com/vsimonian/generator-restify-server) version
 0.1.1.
+
+Para la base de datos y persistencia se utiliza [neDB](https://github.com/louischatriot/nedb)
 
 ## What's included
 

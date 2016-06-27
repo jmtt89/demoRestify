@@ -1,143 +1,84 @@
-var db = new loki('loki.json');
-var users = db.addCollection('users');
-
-module.exports = function(server, logger) {
+module.exports = function(database, server, logger) {
+  var users = database.users;
   
   //Get all user info
   server.get('/user', function (req, res, next) {
     //Respondes todos los elementos en la Collecion de usuarios
-    res.send(200,users.data);
-    return next();
+    users.find({}).sort({ username: 1 }).exec(function (err, docs) {
+      if(!err){
+        res.send(200,docs);
+      }else{
+        res.send(500,err);
+      }
+      return next();
+    });
   });
   
   //Get User Info 
   server.get('/user/:username', function (req, res, next) {
-
-  	//Obtienes el username && password
-  	var username = req.params.username;
-
-  	//Validas con la Base de Datos
-  	var status = 404; //404 -> Not Found
-
-  	var user = users.find({'username':username}) //Busca el usuario en la DB
-
-  	//Si el usuario existe
-  	if(user){
-  		status = 200;
-  	}
-
-  	//Respondes en consecuencia
-    res.send(status,user);      
-    return next();
+    //Regresa toda la informacion de algun usuario en particular por todo el username 
+    users.findOne({ username: req.params.username }, function (err, doc) {
+      if(!err){
+        if(doc){
+          //Respondes en consecuencia
+          res.send(200,doc);
+        }else{
+          //404 -> Not Found
+          res.send(404,req.params.username);
+        }
+      }else{
+        //500 - > Internal Server Error
+        res.send(500,err);
+      }
+      return next();
+    });
   });  
 
-  //Create User Info 
-  server.post('/user/:username', function (req, res, next) {
+  //Create new user
+  server.post('/user', function (req, res, next) {
 
-    //Obtienes el username
-    var username = req.params.username;
+    var user = JSON.parse(req.body);
 
-    //Consigues toda la data del usuario traida en el Body
-    var newUser = req.body;
-
-    //Agregas la informacion del username
-    newUser.username = req.params.username;
-
-
-    users.update({'username':username},newUser,{upsert:true},function(err, numAffected, affectedDocuments, upsert){
+    //Creas el nuevo usuario, si el usuario existe se sobreescribe
+    users.update({'username':user.username},user,{upsert:true,returnUpdatedDocs:true},function(err, numAffected, affectedDocuments, upsert){
       if(!err){
-
+        res.send(200,affectedDocuments);
       }else{
-        
+        res.send(500,err);
       }
-    });
-
-
-    //Busca el usuario en la DB
-    var user = users.find()
-
-    //Si el usuario no existe, lo creas
-    if(!user){
-      users.insert(newUser, function (err, newDoc) {
-        //Respondes en consecuencia
-        res.send(200,newDoc);      
-        return next();
-      });
-    }else{
-      //Responder si el usuario existe
-      //406 -> Not Acceptable
-      var error = "User "+username+" already exist use PUT instead"
-      res.send(406,error);
       return next();
-    }
+    });
   });
 
-  //Set User Info 
+  //Update User 
   server.put('/user/:username', function (req, res, next) {
 
-    //Obtienes el username
-    var username = req.params.username;
+    var user = JSON.parse(req.body);
+    user.username = req.params.username;
 
-    //Validas con la Base de Datos
-    var status = 404; //404 -> Not Found
-    var error = "User "+username+" not exist use POST instead"
-
-    //Busca el usuario en la DB
-    var user = users.find({'username':username})
-
-    //Si el usuario existe, lo actualizas
-    if(user){
-      status = 200;
-
-      //Actualizas la informacion que viene el body
-      for (var key in req.body){
-        if (typeof req.body[key] !== 'function') {
-          user[key] = req.body[key];
-        }
+    //Actualiza un usuario, si el usuario no existe lo
+    users.update({'username':req.params.username},user,{upsert:true,returnUpdatedDocs:true},function(err, numAffected, affectedDocuments, upsert){
+      if(!err){
+        res.send(200,affectedDocuments);
+      }else{
+        res.send(500,err);
       }
-
-      
-    }
-
-    //Respondes en consecuencia
-    res.send(status,status==200?user:error);      
-    return next();
-
-    //Si el usuario no existe, lo creas
-    if(!user){
-      users.insert(newUser, function (err, newDoc) {
-        //Respondes en consecuencia
-        res.send(200,newDoc);      
-        return next();
-      });
-    }else{
-      //Responder si el usuario existe
-      //406 -> Not Acceptable
-      var error = "User "+username+" already exist use PUT instead"
-      res.send(406,error);
       return next();
-    }
+    });
   });
 
   //Delete User
   server.del('/user/:username', function (req, res, next) {
 
-    //Obtienes el username
-    var username = req.params.username;
-
-    //Validas con la Base de Datos
-    var status = 404; //404 -> Unauthorized (por defecto)
-
-    var user = users.find({'username':username}) //Busca el usuario en la DB
-
-    //Si el usuario existe eliminalo, 
-    if(user){
-      status = 200;
-      users.remove(user);
-    }
-
-    //Respondes en consecuencia
-    res.send(status,user);
-    return next();
+    // Remove one document from the collection
+    // options set to {} since the default for multi is false
+    db.remove({ username: req.params.username }, {}, function (err, numRemoved) {
+      if(!err){
+        res.send(200,'Deleted '+req.params.username);
+      }else{
+        res.send(500,err);
+      }
+      return next();
+    });
   });
 };

@@ -1,4 +1,4 @@
-module.exports = function(server, logger) {
+module.exports = function(database, server, logger) {
   
   // Sample route
   server.get('/test', function (req, res, next) {

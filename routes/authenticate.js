@@ -1,25 +1,26 @@
-module.exports = function(server, logger) {
+module.exports = function(database, server, logger) {
+  var users = database.users;
   
   //Login 
   server.get('/auth/:username/:password', function (req, res, next) {
 
-  	//Obtienes el username && password
-  	var username = req.params.username;
-  	var password = req.params.password;
+    //Revisa si existe alguna dupla username,password registrada 
+    users.findOne({ username: req.params.username , password: req.params.password }, function (err, doc) {
+      if(!err){
+        if(doc){
+          //Respondes en consecuencia
+          res.send(200,doc);
+        }else{
+          //404 -> Unauthorized
+          res.send(401,req.params.username);
+        }
+      }else{
+        //500 - > Internal Server Error
+        res.send(500,err);
+      }
+      return next();
+    });
 
-  	//Validas con la Base de Datos
-  	var status = 401; //401 -> Unauthorized (por defecto)
-
-  	var user = users.find({'username':username}) //Busca el usuario en la DB
-
-  	//Si el usuario existe y tiene el password correcto, 
-  	if(user && user.password == password){
-  		status = 200;
-  	}
-
-  	//Respondes en consecuencia
-    res.send(status,{ 'Authenticate': status == 200 });      
-    return next();
   });
   
 };
